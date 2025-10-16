@@ -1,0 +1,34 @@
+[versions]
+agp = "8.12.0"
+kotlin = "1.9.22"
+androidx-wear = "1.3.0"
+gms-wearable = "18.2.0"
+coroutines = "1.7.3"
+compose-bom = "2023.08.00"
+metawear = "4.0.0"   # ✅ 升级到 JitPack 上的 4.0.0
+
+[libraries]
+androidx-wear = { group = "androidx.wear", name = "wear", version.ref = "androidx-wear" }
+play-services-wearable = { group = "com.google.android.gms", name = "play-services-wearable", version.ref = "gms-wearable" }
+
+# Compose (Phone)
+compose-bom = { group = "androidx.compose", name = "compose-bom", version.ref = "compose-bom" }
+compose-material = { group = "androidx.compose.material", name = "material" }
+compose-foundation = { group = "androidx.compose.foundation", name = "foundation" }
+ui = { group = "androidx.compose.ui", name = "ui" }
+ui-tooling-preview = { group = "androidx.compose.ui", name = "ui-tooling-preview" }
+ui-tooling = { group = "androidx.compose.ui", name = "ui-tooling" }
+ui-test-manifest = { group = "androidx.compose.ui", name = "ui-test-manifest" }
+ui-test-junit4 = { group = "androidx.compose.ui", name = "ui-test-junit4" }
+
+# 协程
+kotlinx-coroutines-core = { group = "org.jetbrains.kotlinx", name = "kotlinx-coroutines-core", version.ref = "coroutines" }
+kotlinx-coroutines-android = { group = "org.jetbrains.kotlinx", name = "kotlinx-coroutines-android", version.ref = "coroutines" }
+kotlinx-coroutines-playservices = { group = "org.jetbrains.kotlinx", name = "kotlinx-coroutines-play-services", version.ref = "coroutines" }
+
+# ✅ MetaWear (JitPack)
+metawear = { group = "com.github.mbientlab", name = "MetaWear-SDK-Android", version.ref = "metawear" }
+
+[plugins]
+androidApplication = { id = "com.android.application", version.ref = "agp" }
+jetbrainsKotlinAndroid = { id = "org.jetbrains.kotlin.android", version.ref = "kotlin" }

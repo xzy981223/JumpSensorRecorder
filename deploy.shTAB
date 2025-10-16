@@ -1,0 +1,23 @@
+#!/bin/bash
+
+# 停止脚本时如果有错误
+set -e
+
+echo "📦 开始编译手机 APK..."
+./gradlew :app:assembleDebug
+
+echo "📦 开始编译手表 APK..."
+./gradlew :wear:assembleDebug
+
+# 你的手机和手表的 adb ID
+PHONE_ID="ZY32825Q3T"
+WATCH_ID="133.2.130.209:42891"
+
+echo "📲 安装到手机..."
+adb -s $PHONE_ID install -r app/build/outputs/apk/debug/app-debug.apk
+
+echo "⌚ 安装到手表..."
+adb -s $WATCH_ID install -r wear/build/outputs/apk/debug/wear-debug.apk
+
+echo "✅ 部署完成！"
+

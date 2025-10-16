@@ -1,0 +1,108 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:padding="20dp">
+
+    <LinearLayout
+        android:orientation="vertical"
+        android:gravity="center_horizontal"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content">
+
+        <AutoCompleteTextView
+            android:id="@+id/nameEditText"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:hint="请输入或选择用户姓名"
+            android:completionThreshold="1"
+            android:inputType="textPersonName"
+            android:padding="8dp"
+            android:layout_marginTop="8dp"
+            android:textSize="16sp" />
+
+
+        <!-- 输入年龄 -->
+        <EditText
+            android:id="@+id/ageEditText"
+            android:hint="Age"
+            android:inputType="number"
+            android:layout_width="200dp"
+            android:layout_height="48dp"
+            android:layout_marginTop="10dp"/>
+
+        <!-- 计算按钮 -->
+        <Button
+            android:id="@+id/calcHrButton"
+            android:text="Calculate HRmax and Target Zone"
+            android:layout_width="wrap_content"
+            android:layout_height="48dp"
+            android:layout_marginTop="10dp" />
+
+        <!-- HRmax & 区间 -->
+        <TextView
+            android:id="@+id/hrSummaryTextView"
+            android:text="After filling in the age, HRmax and target zone will be calculated"
+            android:textSize="18sp"
+            android:layout_marginTop="20dp"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content" />
+
+        <!-- 心率显示 -->
+        <TextView
+            android:id="@+id/tvBpm"
+            android:text="Heart rate: -- BPM"
+            android:textSize="22sp"
+            android:textStyle="bold"
+            android:layout_marginTop="20dp"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content" />
+
+        <!-- 模式 -->
+        <TextView
+            android:id="@+id/tvMode"
+            android:text="Mode: undefined"
+            android:textSize="22sp"
+            android:textStyle="bold"
+            android:textColor="@android:color/holo_blue_dark"
+            android:layout_marginTop="15dp"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content" />
+
+        <!-- 热身计时器 -->
+        <TextView
+            android:id="@+id/tvWarmupTimer"
+            android:text="Warm-up: --s"
+            android:textSize="18sp"
+            android:layout_marginTop="10dp"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content" />
+
+        <!-- 节拍器状态 -->
+        <TextView
+            android:id="@+id/metronomeStatusTextView"
+            android:text="Metronome: undefined"
+            android:textSize="22sp"
+            android:layout_marginTop="20dp"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content" />
+
+        <!-- 跳跃频率 -->
+        <TextView
+            android:id="@+id/tvJpm"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Jump Frequency: -- JPM"
+            android:textSize="18sp"
+            android:layout_marginTop="10dp"/>
+
+        <!-- 加速度 -->
+        <TextView
+            android:id="@+id/tvAccel"
+            android:text="Y-axis acceleration: --"
+            android:textSize="18sp"
+            android:layout_marginTop="10dp"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"/>
+    </LinearLayout>
+</ScrollView>

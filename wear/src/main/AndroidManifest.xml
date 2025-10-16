@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    package="com.example.jumpsensorrecorder">
+
+    <!-- 声明这是 Wear OS 应用 -->
+    <uses-feature android:name="android.hardware.type.watch" />
+
+    <!-- ✅ 心率传感器 -->
+    <uses-permission android:name="android.permission.BODY_SENSORS" />
+    <!-- 可选：后台心率（Android 13+ 才会用到） -->
+
+    <!-- ✅ 蓝牙连接 MetaMotionS (Android 12+) -->
+    <uses-permission android:name="android.permission.BLUETOOTH_CONNECT" />
+    <uses-permission android:name="android.permission.BLUETOOTH_SCAN" />
+
+    <!-- 旧版兼容（有些设备需要） -->
+    <uses-permission android:name="android.permission.BLUETOOTH" />
+
+    <!-- ✅ 前台服务：心率 + 蓝牙 -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_HEALTH" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_CONNECTED_DEVICE" />
+
+    <application
+        android:allowBackup="true"
+        android:label="@string/app_name"
+        android:icon="@mipmap/ic_launcher"
+        android:theme="@android:style/Theme.DeviceDefault">
+
+        <!-- Wear 独立运行 -->
+        <meta-data
+            android:name="com.google.android.wearable.standalone"
+            android:value="true" />
+
+        <!-- 启动入口 -->
+        <activity
+            android:name=".presentation.MainActivity"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+
+        <!-- ✅ 心率 + 加速度发送服务 -->
+        <service
+            android:name=".hr.HrSenderService"
+            android:enabled="true"
+            android:exported="false"
+            android:foregroundServiceType="health|connectedDevice" />
+
+    </application>
+</manifest>

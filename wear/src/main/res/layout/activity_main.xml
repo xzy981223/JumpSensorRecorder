@@ -1,0 +1,57 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:gravity="center"
+        android:padding="12dp">
+
+        <!-- 心率显示 -->
+        <TextView
+            android:id="@+id/tvHr"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@string/heart_rate_placeholder"
+            android:textSize="16sp"
+            android:layout_marginTop="6dp"/>
+
+        <!-- 跳跃频率 -->
+        <TextView
+            android:id="@+id/tvJpm"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@string/jpm_placeholder"
+            android:textSize="16sp"
+            android:layout_marginTop="6dp"/>
+
+        <!-- 当前节拍器 BPM -->
+        <TextView
+            android:id="@+id/tvBpm"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@string/bpm_placeholder"
+            android:textSize="16sp"
+            android:layout_marginTop="6dp"/>
+
+
+        <!-- Start 按钮 -->
+        <Button
+            android:id="@+id/btnStart"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@string/start"
+            android:layout_marginTop="1dp"/>
+
+        <!-- Stop 按钮 -->
+        <Button
+            android:id="@+id/btnStop"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@string/stop"
+            android:layout_marginTop="1dp"/>
+    </LinearLayout>
+</ScrollView>

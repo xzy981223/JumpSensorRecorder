@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- 应用名称 -->
+    <string name="app_name">JumpSensorRecorder Wear</string>
+
+    <!-- 数据占位 -->
+    <string name="heart_rate_placeholder">HR: -- bpm</string>
+    <string name="jpm_placeholder">JPM: --</string>
+    <string name="bpm_placeholder">BPM: --</string>
+
+    <!-- 传感器提示 -->
+    <string name="no_sensor">No heart rate sensor</string>
+    <string name="permission_denied">Sensor permission denied</string>
+
+    <!-- 按钮 -->
+    <string name="start">Start</string>
+    <string name="stop">Stop</string>
+</resources>
