@@ -61,6 +61,7 @@ class MainActivity : Activity(), MessageClient.OnMessageReceivedListener {
     private var participantName: String = ""
     private val PREFS_NAME = "user_prefs"
     private val KEY_USER_LIST = "user_list"
+    private var isUiInitialized = false
 
     // JPM 检测器
     private val jpmDetector = JpmDetector(
@@ -122,99 +123,8 @@ class MainActivity : Activity(), MessageClient.OnMessageReceivedListener {
         super.onCreate(savedInstanceState)
 
 
-        // ✅ Android 12+ 蓝牙权限检查
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-            val permissions = mutableListOf(
-                Manifest.permission.BLUETOOTH_CONNECT,
-                Manifest.permission.BLUETOOTH_SCAN
-            )
-            val missing = permissions.filter {
-                ContextCompat.checkSelfPermission(this, it) != PackageManager.PERMISSION_GRANTED
-            }
-            if (missing.isNotEmpty()) {
-                ActivityCompat.requestPermissions(this, missing.toTypedArray(), 100)
-            }
-        } else {
-            // ✅ Android 11 及以下版本需要定位权限才能扫描 BLE
-            val locPerm = Manifest.permission.ACCESS_FINE_LOCATION
-            if (ContextCompat.checkSelfPermission(this, locPerm) != PackageManager.PERMISSION_GRANTED) {
-                ActivityCompat.requestPermissions(this, arrayOf(locPerm), 101)
-            }
-        }
-
-        // ✅ Step 2: 确保在拿到权限后再继续加载 UI
         setContentView(R.layout.activity_main)
-
-        // ✅ Step 3: 防止重复执行（权限申请会重新进入 onCreate）
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-            if (ContextCompat.checkSelfPermission(this, Manifest.permission.BLUETOOTH_CONNECT)
-                != PackageManager.PERMISSION_GRANTED
-            ) {
-                Log.w("MainActivity", "蓝牙权限未授权，暂不初始化 BLE 模块")
-                return
-            }
-        }
-
-        // 🔹 让屏幕常亮
-        window.addFlags(android.view.WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
-
-        // ✅ 初始化节拍器
-        MetronomeManager.init(this)
-
-        ageEditText = findViewById(R.id.ageEditText)
-        calcHrButton = findViewById(R.id.calcHrButton)
-        hrSummaryTextView = findViewById(R.id.hrSummaryTextView)
-        tvBpm = findViewById(R.id.tvBpm)
-        tvAccel = findViewById(R.id.tvAccel)
-        tvJpm = findViewById(R.id.tvJpm)
-        metronomeStatusTextView = findViewById(R.id.metronomeStatusTextView)
-        tvWarmupTimer = findViewById(R.id.tvWarmupTimer)
-        tvMode = findViewById(R.id.tvMode)
-        nameEditText = findViewById(R.id.nameEditText)
-
-        // 加载保存过的用户名列表
-        val prefs = getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
-        val userList = prefs.getStringSet(KEY_USER_LIST, mutableSetOf())!!.toMutableList()
-
-// 设置下拉建议
-        val adapter = ArrayAdapter(this, android.R.layout.simple_dropdown_item_1line, userList)
-        nameEditText.setAdapter(adapter)
-
-
-        // ✅ 日志文件初始化
-        val sdf = SimpleDateFormat("yyyyMMdd_HHmmss", Locale.US)
-        val filename = "experiment_log_${sdf.format(Date())}.csv"
-        val dir = File(filesDir, "logs")   // ✅ 改成内部目录
-        if (!dir.exists()) dir.mkdirs()
-        logFile = File(dir, filename)
-        Log.d("Experiment", "日志文件初始化: ${logFile.absolutePath}")
-
-        // ✅ 写入列名和姓名（只在第一次创建时）
-        if (!logFile.exists() || logFile.length() == 0L) {
-            BufferedWriter(FileWriter(logFile, true)).use { writer ->
-                if (participantName.isNotEmpty()) {
-                    writer.appendLine("Name: $participantName")
-                }
-                writer.appendLine("timestamp,hr,ax,ay,az,jpm,bpm")
-            }
-        }
-
-        // 计算 HRmax 和 target zone
-        calcHrButton.setOnClickListener {
-            val age = ageEditText.text.toString().trim().toIntOrNull()
-            if (age == null || age !in 10..90) {
-                hrSummaryTextView.text = "请输入有效年龄 (10–90)"
-                return@setOnClickListener
-            }
-            hrMax = calcHrMax(age)
-            targetLow = (hrMax * 0.55).toInt()
-            targetHigh = (hrMax * 0.65).toInt()
-
-            hrSummaryTextView.text = """
-                HRmax: $hrMax bpm
-                Target zone: $targetLow–$targetHigh bpm (55–65%)
-            """.trimIndent()
-        }
+        checkPermissionsAndMaybeInit()
 
 //        // 🎵 测试节拍器是否能播放声音（3 秒后播放 5 秒）
 //        android.os.Handler(mainLooper).postDelayed({
@@ -412,5 +322,118 @@ class MainActivity : Activity(), MessageClient.OnMessageReceivedListener {
         super.onDestroy()
         MetronomeManager.stop()
         stopService(Intent(this, AccelService::class.java))
+    }
+
+    override fun onRequestPermissionsResult(
+        requestCode: Int,
+        permissions: Array<out String>,
+        grantResults: IntArray
+    ) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
+
+        if (requestCode == REQUEST_CODE_BT || requestCode == REQUEST_CODE_LOCATION) {
+            if (grantResults.all { it == PackageManager.PERMISSION_GRANTED }) {
+                Log.d("MainActivity", "权限已授予，继续初始化 UI")
+                checkPermissionsAndMaybeInit()
+            } else {
+                Log.w("MainActivity", "必要权限被拒绝，部分功能不可用")
+            }
+        }
+    }
+
+    private fun checkPermissionsAndMaybeInit() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            val permissions = listOf(
+                Manifest.permission.BLUETOOTH_CONNECT,
+                Manifest.permission.BLUETOOTH_SCAN
+            )
+            val missing = permissions.filter {
+                ContextCompat.checkSelfPermission(this, it) != PackageManager.PERMISSION_GRANTED
+            }
+            if (missing.isNotEmpty()) {
+                ActivityCompat.requestPermissions(this, missing.toTypedArray(), REQUEST_CODE_BT)
+                return
+            }
+        } else {
+            val locPerm = Manifest.permission.ACCESS_FINE_LOCATION
+            if (ContextCompat.checkSelfPermission(this, locPerm) != PackageManager.PERMISSION_GRANTED) {
+                ActivityCompat.requestPermissions(this, arrayOf(locPerm), REQUEST_CODE_LOCATION)
+                return
+            }
+        }
+
+        if (isUiInitialized) {
+            return
+        }
+        isUiInitialized = true
+
+        // 🔹 让屏幕常亮
+        window.addFlags(android.view.WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+
+        // ✅ 初始化节拍器
+        MetronomeManager.init(this)
+
+        ageEditText = findViewById(R.id.ageEditText)
+        calcHrButton = findViewById(R.id.calcHrButton)
+        hrSummaryTextView = findViewById(R.id.hrSummaryTextView)
+        tvBpm = findViewById(R.id.tvBpm)
+        tvAccel = findViewById(R.id.tvAccel)
+        tvJpm = findViewById(R.id.tvJpm)
+        metronomeStatusTextView = findViewById(R.id.metronomeStatusTextView)
+        tvWarmupTimer = findViewById(R.id.tvWarmupTimer)
+        tvMode = findViewById(R.id.tvMode)
+        nameEditText = findViewById(R.id.nameEditText)
+
+        // 加载保存过的用户名列表
+        val prefs = getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        val userList = prefs.getStringSet(KEY_USER_LIST, mutableSetOf())!!.toMutableList()
+
+        val adapter = ArrayAdapter(this, android.R.layout.simple_dropdown_item_1line, userList)
+        nameEditText.setAdapter(adapter)
+
+
+        // ✅ 日志文件初始化
+        val sdf = SimpleDateFormat("yyyyMMdd_HHmmss", Locale.US)
+        val filename = "experiment_log_${sdf.format(Date())}.csv"
+        val dir = File(filesDir, "logs")   // ✅ 改成内部目录
+        if (!dir.exists()) dir.mkdirs()
+        logFile = File(dir, filename)
+        Log.d("Experiment", "日志文件初始化: ${logFile.absolutePath}")
+
+        // ✅ 写入列名和姓名（只在第一次创建时）
+        if (!logFile.exists() || logFile.length() == 0L) {
+            BufferedWriter(FileWriter(logFile, true)).use { writer ->
+                if (participantName.isNotEmpty()) {
+                    writer.appendLine("Name: $participantName")
+                }
+                writer.appendLine("timestamp,hr,ax,ay,az,jpm,bpm")
+            }
+        }
+
+        setupUiListeners()
+    }
+
+    private fun setupUiListeners() {
+        // 计算 HRmax 和 target zone
+        calcHrButton.setOnClickListener {
+            val age = ageEditText.text.toString().trim().toIntOrNull()
+            if (age == null || age !in 10..90) {
+                hrSummaryTextView.text = "请输入有效年龄 (10–90)"
+                return@setOnClickListener
+            }
+            hrMax = calcHrMax(age)
+            targetLow = (hrMax * 0.55).toInt()
+            targetHigh = (hrMax * 0.65).toInt()
+
+            hrSummaryTextView.text = """
+                HRmax: $hrMax bpm
+                Target zone: $targetLow–$targetHigh bpm (55–65%)
+            """.trimIndent()
+        }
+    }
+
+    companion object {
+        private const val REQUEST_CODE_BT = 100
+        private const val REQUEST_CODE_LOCATION = 101
     }
 }
