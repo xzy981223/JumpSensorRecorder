@@ -200,6 +200,14 @@ class MainActivity : Activity(), MessageClient.OnMessageReceivedListener {
             return
         }
 
+        // 🔹 确保前台加速度采集服务已经启动
+        kotlin.runCatching {
+            val accelIntent = Intent(this, AccelService::class.java)
+            ContextCompat.startForegroundService(this, accelIntent)
+            Log.d("Experiment", "已请求启动 AccelService")
+        }.onFailure { e ->
+            Log.e("Experiment", "启动 AccelService 失败", e)
+        }
 
 
         isJumping = true
@@ -244,6 +252,13 @@ class MainActivity : Activity(), MessageClient.OnMessageReceivedListener {
         runOnUiThread {
             tvMode.text = "mode: stop"
             metronomeStatusTextView.text = "Metronome: STOP"
+        }
+        // 🔹 停止前台加速度服务，避免继续采集
+        kotlin.runCatching {
+            val stopped = stopService(Intent(this, AccelService::class.java))
+            Log.d("Experiment", "停止 AccelService: $stopped")
+        }.onFailure { e ->
+            Log.e("Experiment", "停止 AccelService 失败", e)
         }
         Log.d("Experiment", "跳绳已停止")
     }
