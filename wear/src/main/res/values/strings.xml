@@ -11,6 +11,9 @@
     <!-- 传感器提示 -->
     <string name="no_sensor">No heart rate sensor</string>
     <string name="permission_denied">Sensor permission denied</string>
+    <string name="status_ready">Status: Ready</string>
+    <string name="status_collecting">Status: Collecting…</string>
+    <string name="status_stopped">Status: Stopped</string>
 
     <!-- 按钮 -->
     <string name="start">Start</string>
