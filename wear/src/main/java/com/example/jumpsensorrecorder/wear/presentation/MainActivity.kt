@@ -41,6 +41,8 @@ class MainActivity : ComponentActivity(), MessageClient.OnMessageReceivedListene
         tvHr = findViewById(R.id.tvHr)
         tvJpm = findViewById(R.id.tvJpm)
         tvBpm = findViewById(R.id.tvBpm)
+        tvState = findViewById(R.id.tvState)
+        tvState.text = getString(R.string.status_ready)
 
         btnStop.isEnabled = false
         btnStop.alpha = 0.5f
@@ -53,6 +55,7 @@ class MainActivity : ComponentActivity(), MessageClient.OnMessageReceivedListene
                     btnStop.isEnabled = true
                     btnStop.alpha = 1.0f
                     btnStart.isEnabled = false
+                    tvState.text = getString(R.string.status_collecting)
 
                     // 启动心率服务
                     ContextCompat.startForegroundService(
@@ -88,6 +91,7 @@ class MainActivity : ComponentActivity(), MessageClient.OnMessageReceivedListene
                 btnStop.isEnabled = false
                 btnStop.alpha = 0.5f
                 btnStart.isEnabled = true
+                tvState.text = getString(R.string.status_stopped)
 
                 // 停止心率服务
                 ContextCompat.startForegroundService(
