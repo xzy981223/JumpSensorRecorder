@@ -83,7 +83,10 @@ class HrReceiverService : WearableListenerService() {
             PATH_START_ALL -> {
                 try {
                     Log.d("HrReceiverService", "收到 StartAll 请求，启动 AccelService ✅")
-                    startService(Intent(this, AccelService::class.java))   // 改成普通 startService
+                    ContextCompat.startForegroundService(
+                        this,
+                        Intent(this, AccelService::class.java)
+                    )
                 } catch (e: Exception) {
                     Log.e("HrReceiverService", "启动 AccelService 失败", e)
                 }
