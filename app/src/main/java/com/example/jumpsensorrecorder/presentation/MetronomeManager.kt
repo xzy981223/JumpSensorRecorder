@@ -23,6 +23,7 @@ object MetronomeManager {
     private var metronomeJob: Job? = null
     private var isInitialized = false
     private var isSoundLoaded = false
+    private var pendingStartBpm: Int? = null
 
     // 使用一个 CoroutineScope 管理节拍协程
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
@@ -49,6 +50,11 @@ object MetronomeManager {
             if (status == 0) {
                 isSoundLoaded = true
                 Log.d(TAG, "✅ click.wav 加载完成 (soundId=$sampleId)")
+                pendingStartBpm?.let { bpm ->
+                    Log.d(TAG, "⏯ 加载完成，自动启动待播放的节拍器 ($bpm BPM)")
+                    pendingStartBpm = null
+                    startInternal(bpm)
+                }
             } else {
                 Log.e(TAG, "❌ click.wav 加载失败 (status=$status)")
             }
@@ -64,10 +70,16 @@ object MetronomeManager {
             return
         }
         if (!isSoundLoaded) {
-            Log.w(TAG, "⏳ click.wav 尚未加载完成，等待后重试")
+            Log.w(TAG, "⏳ click.wav 尚未加载完成，记录待播放 BPM=$bpm")
+            pendingStartBpm = bpm
             return
         }
 
+        pendingStartBpm = null
+        startInternal(bpm)
+    }
+
+    private fun startInternal(bpm: Int) {
         stop() // 停止上一次节拍
 
         val intervalMs = (60000.0 / bpm).toLong()
@@ -97,6 +109,7 @@ object MetronomeManager {
             Log.d(TAG, "⏹ Metronome stopped")
         }
         metronomeJob = null
+        pendingStartBpm = null
     }
 
     /** 释放资源 */
