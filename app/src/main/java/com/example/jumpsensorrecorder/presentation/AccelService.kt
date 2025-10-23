@@ -19,7 +19,6 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import java.io.File
 import java.io.FileWriter
-import kotlin.math.sqrt
 import kotlinx.coroutines.launch
 
 /**
@@ -33,9 +32,8 @@ class AccelService : Service() {
     private var accelRoute: Route? = null
     private var isConnected = false
 
-    private val buffer = mutableListOf<Triple<Float, Float, Float>>()
-
-    private var lastWriteTime = 0L
+    private val csvBuffer = StringBuilder()
+    private val bufferLock = Any()
 
     // -------- ServiceConnection ----------
     private val serviceConnection = object : ServiceConnection {
@@ -134,10 +132,13 @@ class AccelService : Service() {
     private fun startAccelStream() {
         try {
             val writeIntervalMs = 3000L  // 每3秒写入一次
-            val buffer = StringBuilder()
             var lastFlush = System.currentTimeMillis()
             var sampleCount = 0
             val startTime = System.currentTimeMillis()
+
+            synchronized(bufferLock) {
+                csvBuffer.clear()
+            }
 
             accelModule?.acceleration()?.addRouteAsync { source ->
                 source.stream { data, _ ->
@@ -149,7 +150,9 @@ class AccelService : Service() {
                         val timestamp = System.currentTimeMillis()
 
                         // ✅ 每条样本都放进缓存（不漏）
-                        buffer.append("$timestamp,$ax,$ay,$az\n")
+                        synchronized(bufferLock) {
+                            csvBuffer.append("$timestamp,$ax,$ay,$az\n")
+                        }
 
                         // 用于监控实际采样率
                         sampleCount++
@@ -162,7 +165,7 @@ class AccelService : Service() {
                         // ✅ 每3秒写入一次文件
                         val now = System.currentTimeMillis()
                         if (now - lastFlush >= writeIntervalMs) {
-                            flushBuffer(buffer)
+                            flushBuffer()
                             lastFlush = now
                         }
 
@@ -199,29 +202,15 @@ class AccelService : Service() {
         try {
             Log.d(TAG, "🛑 准备停止加速度采集...")
 
-            // 🔹 写入最后的未满3秒数据
-            if (buffer.isNotEmpty()) {
-                val meanAx = buffer.map { it.first }.average().toFloat()
-                val meanAy = buffer.map { it.second }.average().toFloat()
-                val meanAz = buffer.map { it.third }.average().toFloat()
-
-                val intent = Intent(ACTION_ACCEL_UPDATE).apply {
-                    putExtra(EXTRA_ACCEL_X, meanAx)
-                    putExtra(EXTRA_ACCEL_Y, meanAy)
-                    putExtra(EXTRA_ACCEL_Z, meanAz)
-                }
-                LocalBroadcastManager.getInstance(this@AccelService).sendBroadcast(intent)
-
-                Log.d(TAG, "📝 已写入最后平均加速度 (尾段) X=%.2f Y=%.2f Z=%.2f".format(meanAx, meanAy, meanAz))
-                buffer.clear()
-            }
-
             accelRoute?.remove()
             accelRoute = null
 
             accelModule?.acceleration()?.stop()
             accelModule?.stop()
             Log.d(TAG, "✅ 加速度采集已停止")
+
+            // 🔹 写入最后的未满3秒数据
+            flushBuffer()
 
             if (isConnected) {
                 board?.disconnectAsync()?.continueWith {
@@ -236,19 +225,24 @@ class AccelService : Service() {
         }
     }
 
-    private fun flushBuffer(buffer: StringBuilder) {
-        if (buffer.isNotEmpty()) {
-            // ✅ 用后台协程执行写入
-            CoroutineScope(Dispatchers.IO).launch {
-                try {
-                    val file = File(getExternalFilesDir(null), "accel_log.csv")
-                    FileWriter(file, true).use { it.write(buffer.toString()) }
-                    Log.d(TAG, "💾 已写入 ${buffer.lines().size} 行数据")
-                } catch (e: Exception) {
-                    Log.e(TAG, "❌ 写入文件失败: ${e.message}")
-                } finally {
-                    buffer.clear()
-                }
+    private fun flushBuffer() {
+        val chunk: String
+        synchronized(bufferLock) {
+            if (csvBuffer.isEmpty()) return
+            chunk = csvBuffer.toString()
+            csvBuffer.clear()
+        }
+
+        // ✅ 用后台协程执行写入
+        CoroutineScope(Dispatchers.IO).launch {
+            try {
+                val file = File(getExternalFilesDir(null), "accel_log.csv")
+                FileWriter(file, true).use { it.write(chunk) }
+                val linesWritten = chunk.count { it == '\n' } +
+                    if (chunk.isNotEmpty() && chunk.last() != '\n') 1 else 0
+                Log.d(TAG, "💾 已写入 $linesWritten 行数据")
+            } catch (e: Exception) {
+                Log.e(TAG, "❌ 写入文件失败: ${e.message}")
             }
         }
     }
