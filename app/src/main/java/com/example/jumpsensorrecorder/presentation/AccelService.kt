@@ -6,11 +6,13 @@ import android.app.Service
 import android.bluetooth.BluetoothManager
 import android.content.*
 import android.os.Build
+import android.os.Handler
 import android.os.IBinder
 import android.util.Log
 import androidx.core.app.NotificationCompat
 import androidx.localbroadcastmanager.content.LocalBroadcastManager
 import com.mbientlab.metawear.MetaWearBoard
+import com.mbientlab.metawear.MetaWearBoard.DeviceDisconnectedHandler
 import com.mbientlab.metawear.Route
 import com.mbientlab.metawear.android.BtleService
 import com.mbientlab.metawear.data.Acceleration
@@ -32,6 +34,9 @@ class AccelService : Service() {
     private var accelRoute: Route? = null
     private var isConnected = false
 
+    private val mainHandler by lazy { Handler(mainLooper) }
+    private var remainingConnectRetries = MAX_CONNECT_RETRIES
+
     private val csvBuffer = StringBuilder()
     private val bufferLock = Any()
 
@@ -47,19 +52,8 @@ class AccelService : Service() {
                 Log.d(TAG, "🔍 尝试连接设备 MAC=$META_MOTION_MAC")
 
                 board = serviceBinder?.getMetaWearBoard(device)
-
-                board?.connectAsync()?.continueWith { task ->
-                    if (task.isFaulted) {
-                        Log.e(TAG, "❌ MetaMotionS 连接失败", task.error)
-                    } else {
-                        Log.d(TAG, "✅ MetaMotionS 连接成功")
-                        isConnected = true
-
-                        // ⭐ 在此处打印设备型号
-                        Log.d(TAG, "✅ Connected board: ${board?.model}")
-                        setupAccel()
-                    }
-                }
+                remainingConnectRetries = MAX_CONNECT_RETRIES
+                connectBoardWithRetry()
             } catch (e: Exception) {
                 Log.e(TAG, "❌ 获取 BluetoothDevice 出错", e)
             }
@@ -120,11 +114,55 @@ class AccelService : Service() {
             Log.d(TAG, "⚙️ 已设置采样率 100Hz (range=16g, lowPower=false)")
 
             // ⭐修改点③：等待设备应用配置（很重要）
-            android.os.Handler(mainLooper).postDelayed({
+            mainHandler.postDelayed({
                 startAccelStream()
             }, 300) // 延迟300ms后启动
         } catch (e: Exception) {
             Log.e(TAG, "❌ setupAccel 出错", e)
+        }
+    }
+
+    private fun connectBoardWithRetry() {
+        val currentBoard = board
+        if (currentBoard == null) {
+            Log.e(TAG, "❌ MetaMotionS board 未初始化，无法连接")
+            return
+        }
+
+        val attempt = MAX_CONNECT_RETRIES - remainingConnectRetries + 1
+        Log.d(
+            TAG,
+            "🔄 正在尝试连接 MetaMotionS (第 ${attempt} 次，共 ${MAX_CONNECT_RETRIES} 次)"
+        )
+
+        currentBoard.connectAsync().continueWith { task ->
+            if (task.isFaulted) {
+                Log.e(TAG, "❌ MetaMotionS 连接失败 (第 ${attempt} 次)", task.error)
+
+                if (remainingConnectRetries > 1) {
+                    remainingConnectRetries--
+                    val delay = CONNECT_RETRY_DELAY_MS * attempt
+                    Log.w(TAG, "⏳ ${delay}ms 后重试连接 (剩余 ${remainingConnectRetries} 次)")
+                    mainHandler.postDelayed({ connectBoardWithRetry() }, delay)
+                } else {
+                    Log.e(TAG, "🚫 MetaMotionS 连接失败，已达到最大重试次数")
+                    stopSelf()
+                }
+            } else {
+                Log.d(TAG, "✅ MetaMotionS 连接成功 (第 ${attempt} 次)")
+                isConnected = true
+
+                currentBoard.onUnexpectedDisconnect = DeviceDisconnectedHandler { status ->
+                    Log.w(TAG, "⚠️ MetaMotionS 意外断开: $status")
+                    isConnected = false
+                    remainingConnectRetries = MAX_CONNECT_RETRIES
+                    mainHandler.post { connectBoardWithRetry() }
+                }
+
+                // ⭐ 在此处打印设备型号
+                Log.d(TAG, "✅ Connected board: ${currentBoard.model}")
+                setupAccel()
+            }
         }
     }
 
@@ -201,6 +239,8 @@ class AccelService : Service() {
     private fun releaseBoard() {
         try {
             Log.d(TAG, "🛑 准备停止加速度采集...")
+            mainHandler.removeCallbacksAndMessages(null)
+            remainingConnectRetries = MAX_CONNECT_RETRIES
 
             accelRoute?.remove()
             accelRoute = null
@@ -264,6 +304,9 @@ class AccelService : Service() {
         private const val TAG = "AccelService"
         // ⚠️ 改成你自己的 MetaMotionS MAC 地址
         private const val META_MOTION_MAC = "D3:19:E3:DE:E6:9B"
+
+        private const val MAX_CONNECT_RETRIES = 3
+        private const val CONNECT_RETRY_DELAY_MS = 2000L
 
         // ✅ 广播 Action & Extra Key
         const val ACTION_ACCEL_UPDATE = "ACTION_ACCEL_UPDATE"
