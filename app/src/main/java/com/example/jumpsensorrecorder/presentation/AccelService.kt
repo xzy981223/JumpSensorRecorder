@@ -235,12 +235,15 @@ class AccelService : Service() {
 
         // ✅ 用后台协程执行写入
         CoroutineScope(Dispatchers.IO).launch {
-            try {
-                val file = File(getExternalFilesDir(null), "accel_log.csv")
+            try {// ✅ 改成内部存储（安全、自动随app删除）
+                val dir = File(filesDir, "logs")
+                if (!dir.exists()) dir.mkdirs()
+                val file = File(dir, "accel_log.csv")
+
                 FileWriter(file, true).use { it.write(chunk) }
                 val linesWritten = chunk.count { it == '\n' } +
-                    if (chunk.isNotEmpty() && chunk.last() != '\n') 1 else 0
-                Log.d(TAG, "💾 已写入 $linesWritten 行数据")
+                        if (chunk.isNotEmpty() && chunk.last() != '\n') 1 else 0
+                Log.d(TAG, "💾 已写入 $linesWritten 行数据 -> ${file.absolutePath}")
             } catch (e: Exception) {
                 Log.e(TAG, "❌ 写入文件失败: ${e.message}")
             }
