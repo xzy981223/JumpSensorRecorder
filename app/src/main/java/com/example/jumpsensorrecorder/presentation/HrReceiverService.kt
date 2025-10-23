@@ -87,6 +87,9 @@ class HrReceiverService : WearableListenerService() {
                         this,
                         Intent(this, AccelService::class.java)
                     )
+                    // 通知 MainActivity 更新 UI（通过广播）
+                    val uiIntent = Intent("ACTION_UI_START")
+                    LocalBroadcastManager.getInstance(this).sendBroadcast(uiIntent)
                 } catch (e: Exception) {
                     Log.e("HrReceiverService", "启动 AccelService 失败", e)
                 }

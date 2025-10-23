@@ -77,7 +77,7 @@ class MainActivity : Activity(), MessageClient.OnMessageReceivedListener {
         sampleRateHz = 50.0,
         windowSizeSec = 1.8,
         stepSizeMs = 450L,
-        threshold = 15.0
+        threshold = 18.0
     )
 
     // ---- 文件相关 ----
@@ -126,15 +126,15 @@ class MainActivity : Activity(), MessageClient.OnMessageReceivedListener {
         setContentView(R.layout.activity_main)
         checkPermissionsAndMaybeInit()
 
-//        // 🎵 测试节拍器是否能播放声音（3 秒后播放 5 秒）
-//        android.os.Handler(mainLooper).postDelayed({
-//            Log.d("Test", "🎵 手动测试播放一次 click.wav")
-//            MetronomeManager.start(120)   // 播放 120 BPM
-//            android.os.Handler(mainLooper).postDelayed({
-//                MetronomeManager.stop()
-//                Log.d("Test", "✅ 测试结束，节拍器已停止")
-//            }, 5000)  // 播放 5 秒后停止
-//        }, 3000)  // 程序启动 3 秒后自动播放
+        // ✅ 注册来自 HrReceiverService 的广播监听
+        LocalBroadcastManager.getInstance(this).registerReceiver(object: BroadcastReceiver() {
+            override fun onReceive(context: Context?, intent: Intent?) {
+                if (intent?.action == "ACTION_UI_START") {
+                    Log.d("PhoneMain", "📩 收到 HrReceiverService 发来的 ACTION_UI_START")
+                    startWarmup() // 🔥 直接启动实验逻辑
+                }
+            }
+        }, IntentFilter("ACTION_UI_START"))
     }
 
     override fun onResume() {
@@ -198,15 +198,6 @@ class MainActivity : Activity(), MessageClient.OnMessageReceivedListener {
         if (isJumping || hrMax == 0) {
             runOnUiThread { hrSummaryTextView.text = "⚠️ 请先计算 HRmax!" }
             return
-        }
-
-        // 🔹 确保前台加速度采集服务已经启动
-        kotlin.runCatching {
-            val accelIntent = Intent(this, AccelService::class.java)
-            ContextCompat.startForegroundService(this, accelIntent)
-            Log.d("Experiment", "已请求启动 AccelService")
-        }.onFailure { e ->
-            Log.e("Experiment", "启动 AccelService 失败", e)
         }
 
 

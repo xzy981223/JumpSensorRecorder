@@ -67,7 +67,9 @@ class MainActivity : ComponentActivity(), MessageClient.OnMessageReceivedListene
                     CoroutineScope(Dispatchers.IO).launch {
                         try {
                             val nodes = Wearable.getNodeClient(this@MainActivity).connectedNodes.await()
+                            Log.d("WatchMain", "发现节点数量=${nodes.size}")
                             for (n in nodes) {
+                                Log.d("WatchMain", "📡 向 ${n.displayName} (${n.id}) 发送 /start_all")
                                 Wearable.getMessageClient(this@MainActivity)
                                     .sendMessage(n.id, PATH_START_ALL, ByteArray(0))
                                     .await()
