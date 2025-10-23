@@ -66,6 +66,7 @@ class MainActivity : Activity(), MessageClient.OnMessageReceivedListener {
     // JPM 检测器
     private val jpmDetector = JpmDetector(
         onJpmCalculated = { jpm ->
+            currentJpm = jpm
             runOnUiThread {
                 tvJpm.text = if (jpm <= 0.01) {
                     "跳跃频率: 已停止"
