@@ -62,6 +62,8 @@ class MainActivity : Activity(), MessageClient.OnMessageReceivedListener {
     private val PREFS_NAME = "user_prefs"
     private val KEY_USER_LIST = "user_list"
     private var isUiInitialized = false
+    private var receiversRegistered = false
+    private var pendingStartWarmup = false
 
     // JPM 检测器
     private val jpmDetector = JpmDetector(
@@ -140,7 +142,12 @@ class MainActivity : Activity(), MessageClient.OnMessageReceivedListener {
             override fun onReceive(context: Context?, intent: Intent?) {
                 if (intent?.action == "ACTION_UI_START") {
                     Log.d("PhoneMain", "📩 收到 HrReceiverService 发来的 ACTION_UI_START")
-                    startWarmup() // 🔥 直接启动实验逻辑
+                    if (isUiInitialized) {
+                        startWarmup() // 🔥 直接启动实验逻辑
+                    } else {
+                        Log.w("PhoneMain", "UI 尚未初始化，延迟执行 startWarmup")
+                        pendingStartWarmup = true
+                    }
                 }
             }
         }, IntentFilter("ACTION_UI_START"))
@@ -148,18 +155,29 @@ class MainActivity : Activity(), MessageClient.OnMessageReceivedListener {
 
     override fun onResume() {
         super.onResume()
-        val filter = IntentFilter().apply {
-            addAction(ACTION_HR_UPDATE)
-            addAction(ACTION_ACCEL_UPDATE)
+        if (!isUiInitialized) {
+            Log.d("PhoneMain", "onResume: UI 尚未初始化，跳过注册监听")
+            return
         }
-        LocalBroadcastManager.getInstance(this).registerReceiver(dataReceiver, filter)
-        Wearable.getMessageClient(this).addListener(this) // 🔹 监听手表
+
+        if (!receiversRegistered) {
+            val filter = IntentFilter().apply {
+                addAction(ACTION_HR_UPDATE)
+                addAction(ACTION_ACCEL_UPDATE)
+            }
+            LocalBroadcastManager.getInstance(this).registerReceiver(dataReceiver, filter)
+            Wearable.getMessageClient(this).addListener(this) // 🔹 监听手表
+            receiversRegistered = true
+        }
     }
 
     override fun onPause() {
         super.onPause()
-        LocalBroadcastManager.getInstance(this).unregisterReceiver(dataReceiver)
-        Wearable.getMessageClient(this).removeListener(this)
+        if (receiversRegistered) {
+            LocalBroadcastManager.getInstance(this).unregisterReceiver(dataReceiver)
+            Wearable.getMessageClient(this).removeListener(this)
+            receiversRegistered = false
+        }
     }
 
     // 🔹 接收手表指令
@@ -177,6 +195,11 @@ class MainActivity : Activity(), MessageClient.OnMessageReceivedListener {
     }
 
     private fun startWarmup() {
+        if (!isUiInitialized) {
+            Log.w("PhoneMain", "startWarmup 调用时 UI 尚未初始化，标记稍后执行")
+            pendingStartWarmup = true
+            return
+        }
         // ✅ 新增：在热身开始前获取姓名 & 创建日志文件
         participantName = nameEditText.text.toString().trim()
 
@@ -436,6 +459,12 @@ class MainActivity : Activity(), MessageClient.OnMessageReceivedListener {
         }
 
         setupUiListeners()
+
+        if (pendingStartWarmup) {
+            Log.d("PhoneMain", "处理延迟的 startWarmup 请求")
+            pendingStartWarmup = false
+            startWarmup()
+        }
     }
 
     private fun setupUiListeners() {
