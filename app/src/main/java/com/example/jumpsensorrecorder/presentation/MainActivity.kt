@@ -90,7 +90,7 @@ class MainActivity : Activity(), MessageClient.OnMessageReceivedListener {
     )
 
     // ---- 文件相关 ----
-    private lateinit var logFile: File
+    private var logFile: File? = null
 
     // ✅ 广播接收心率 & 加速度
     private val dataReceiver = object : BroadcastReceiver() {
@@ -227,14 +227,17 @@ class MainActivity : Activity(), MessageClient.OnMessageReceivedListener {
         val dir = File(filesDir, "logs/$participantName")   // ✅ 每个用户独立目录
         if (!dir.exists()) dir.mkdirs()
         logFile = File(dir, filename)
-        Log.d("Experiment", "日志文件初始化: ${logFile.absolutePath}")
+        Log.d("Experiment", "日志文件初始化: ${logFile?.absolutePath}")
 
         // ---- 写入表头 ----
-        if (!logFile.exists() || logFile.length() == 0L) {
-            BufferedWriter(FileWriter(logFile, true)).use { writer ->
+        val file = logFile
+        if (file != null && (!file.exists() || file.length() == 0L)) {
+            BufferedWriter(FileWriter(file, true)).use { writer ->
                 writer.appendLine("Name: $participantName")
                 writer.appendLine("timestamp,hr,ax,ay,az,jpm,bpm")
             }
+        } else if (file == null) {
+            Log.w("Experiment", "日志文件未初始化，无法写入表头")
         }
 
         if (isJumping || hrMax == 0) {
@@ -347,7 +350,11 @@ class MainActivity : Activity(), MessageClient.OnMessageReceivedListener {
         type: String     // ✅ 仍保留参数以兼容旧结构
     ) {
         try {
-            BufferedWriter(FileWriter(logFile, true)).use { writer ->
+            val file = logFile ?: run {
+                Log.w("Experiment", "日志文件未初始化，跳过日志写入")
+                return
+            }
+            BufferedWriter(FileWriter(file, true)).use { writer ->
                 // ✅ 去掉 aAbs 与 type，只写基础字段
                 writer.appendLine(
                     "$timestamp," +
@@ -446,16 +453,19 @@ class MainActivity : Activity(), MessageClient.OnMessageReceivedListener {
         val dir = File(filesDir, "logs")   // ✅ 改成内部目录
         if (!dir.exists()) dir.mkdirs()
         logFile = File(dir, filename)
-        Log.d("Experiment", "日志文件初始化: ${logFile.absolutePath}")
+        Log.d("Experiment", "日志文件初始化: ${logFile?.absolutePath}")
 
         // ✅ 写入列名和姓名（只在第一次创建时）
-        if (!logFile.exists() || logFile.length() == 0L) {
-            BufferedWriter(FileWriter(logFile, true)).use { writer ->
+        val currentLogFile = logFile
+        if (currentLogFile != null && (!currentLogFile.exists() || currentLogFile.length() == 0L)) {
+            BufferedWriter(FileWriter(currentLogFile, true)).use { writer ->
                 if (participantName.isNotEmpty()) {
                     writer.appendLine("Name: $participantName")
                 }
                 writer.appendLine("timestamp,hr,ax,ay,az,jpm,bpm")
             }
+        } else if (currentLogFile == null) {
+            Log.w("Experiment", "日志文件未初始化，无法写入列名")
         }
 
         setupUiListeners()
