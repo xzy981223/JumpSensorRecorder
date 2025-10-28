@@ -73,6 +73,12 @@ class MainActivity : Activity(), MessageClient.OnMessageReceivedListener {
                 } else {
                     "跳跃频率: ${"%.1f".format(jpm)} JPM"
                 }
+
+                if (isJumping) {
+                    lastHr?.let { hr ->
+                        sendStatusToWatch(hr, jpm, currentBpm)
+                    }
+                }
             }
         },
         sampleRateHz = 50.0,
@@ -89,16 +95,18 @@ class MainActivity : Activity(), MessageClient.OnMessageReceivedListener {
         override fun onReceive(context: Context?, intent: Intent?) {
             val timestamp = System.currentTimeMillis()
             when (intent?.action) {
-//                ACTION_HR_UPDATE -> {
-//                    val bpm = intent.getIntExtra(EXTRA_BPM, -1)
-//                    if (bpm != -1) {
-//                        lastHr = bpm
-//                        runOnUiThread { tvBpm.text = "Heart rate: $bpm bpm" }
-//                        updateMetronome(bpm)
-//                        appendLog(timestamp, bpm, null, currentJpm, currentBpm, "HR")
-//                        sendStatusToWatch(bpm, currentJpm, currentBpm)
-//                    }
-//                }
+                ACTION_HR_UPDATE -> {
+                    val bpm = intent.getIntExtra(EXTRA_BPM, -1)
+                    if (bpm != -1) {
+                        lastHr = bpm
+                        runOnUiThread { tvBpm.text = "Heart rate: $bpm bpm" }
+                        updateMetronome(bpm)
+                        appendLog(timestamp, bpm, null, null, null, null, currentJpm, currentBpm, "HR")
+                        if (isJumping && isWarmup) {
+                            sendStatusToWatch(bpm, currentJpm, currentBpm)
+                        }
+                    }
+                }
                 ACTION_ACCEL_UPDATE -> {
                     val ax = intent.getFloatExtra(AccelService.EXTRA_ACCEL_X, 0f).toDouble()
                     val ay = intent.getFloatExtra(AccelService.EXTRA_ACCEL_Y, 0f).toDouble()
@@ -171,6 +179,16 @@ class MainActivity : Activity(), MessageClient.OnMessageReceivedListener {
     private fun startWarmup() {
         // ✅ 新增：在热身开始前获取姓名 & 创建日志文件
         participantName = nameEditText.text.toString().trim()
+
+        // ✅ 启动前台加速度采集服务，保证手机端实时收到加速度
+        kotlin.runCatching {
+            ContextCompat.startForegroundService(
+                this,
+                Intent(this, AccelService::class.java)
+            )
+        }.onFailure { e ->
+            Log.e("PhoneMain", "启动 AccelService 失败", e)
+        }
 
         // ---- 保存用户名到 SharedPreferences ----
         val prefs = getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
