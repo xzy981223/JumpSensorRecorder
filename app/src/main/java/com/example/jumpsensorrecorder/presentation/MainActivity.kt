@@ -14,7 +14,7 @@ import androidx.localbroadcastmanager.content.LocalBroadcastManager
 import com.example.jumpsensorrecorder.R
 import com.example.jumpsensorrecorder.presentation.HrReceiverService.Companion.ACTION_HR_UPDATE
 import com.example.jumpsensorrecorder.presentation.HrReceiverService.Companion.ACTION_ACCEL_UPDATE
-//import com.example.jumpsensorrecorder.presentation.HrReceiverService.Companion.EXTRA_BPM
+import com.example.jumpsensorrecorder.presentation.HrReceiverService.Companion.EXTRA_BPM
 import com.google.android.gms.wearable.MessageClient
 import com.google.android.gms.wearable.MessageEvent
 import com.google.android.gms.wearable.Wearable
